@@ -1,0 +1,104 @@
+window.addEventListener('DOMContentLoaded', function () {
+  var depositAmount, depositFee, totalDeposit = 0;
+  var totalWithdraw = 0;
+
+  paypal.Buttons({
+    createOrder: function(data, actions) {
+      // Set up the transaction
+      return actions.order.create({
+        purchase_units: [{
+          amount: {
+            value: totalDeposit
+          },
+          custom_id: userId
+        }],
+        items: [{
+          name: 'Bitgamer.io Bank Deposit',
+          unit_amount: depositAmount,
+          quantity: 1
+        }]
+      });
+    },
+    onCancel: function (data) {
+      setTimeout(function() { alert('The PayPal transaction was canceled'); }, 0);
+    },
+    onError: function (err) {
+      console.error(err);
+      setTimeout(function() { alert('There was an error with the PayPal transaction'); }, 0);
+    },
+    onApprove: function(data, actions) {
+      return actions.order.capture().then(function(details) {
+        // Call your server to save the transaction
+        return fetch('/services/paypal', {
+          method: 'post',
+          body: JSON.stringify({
+            orderID: data.orderID
+          })
+        }).then(function (response) {
+          if (response.ok) {
+            // Reload page
+            setTimeout(function() {
+              alert('The deposit succeeded. We will now reload the page');
+              window.location.reload();
+            }, 0);
+          } else {
+            setTimeout(function() {
+              alert('There was an error processing your deposit. Please contact us and mention your order ID: '+data.orderID);
+            }, 0);
+          }
+        });
+      });
+    }
+  }).render('#paypal-deposit-button');
+
+  function BankDeposit(val) {
+      depositAmount = val;
+      depositFee = ((val * .03) + .3).toFixed(2);
+      totalDeposit = (Number(depositAmount) + Number(depositFee)).toFixed(2);
+      var newBalance = (Number(depositAmount) + Number(userAccountBalance)).toFixed(2);
+
+      $('#notification.bank-deposit #charge span b').html(totalDeposit);
+      $('#notification.bank-deposit #bank-balance span b').html(newBalance);
+  }
+  BankDeposit(5);
+
+  // Respond to changes in the deposit amount
+  $('#bank-deposit-field').change(function () {
+    BankDeposit(this.value);
+  });
+
+  function BankWithdraw(val) {
+      var rushFee = document.getElementById('rushFee');
+
+      var rushFees = 0;
+      if (rushFee.checked) {
+          var rushFees = 2;
+      }
+
+      var fee = ((val * .03) + .3 - rushFees).toFixed(2);
+      totalWithdraw = (Number(val) + Number(fee)).toFixed(2);
+      var newBalance = (Number(userAccountBalance) - Number(totalWithdraw)).toFixed(2);
+
+      $('#notification.bank-withdraw #total-charge span b').html(totalWithdraw);
+      $('#notification.bank-withdraw #bank-balance span b').html(newBalance);
+  }
+});
+
+(function() {
+    var tryMessage = function() {
+    setTimeout(function() {
+        if(!document.getElementsByClassName) return;
+            var ads = document.getElementsByClassName('large-rectangle'), ad  = ads[ads.length - 1];
+
+            if(!ad || ad.innerHTML.length == 0 || ad.clientHeight === 0) {
+                openNotification('ablock');
+            }
+        }, 1000);
+    }
+
+    if(window.addEventListener) {
+        window.addEventListener('load', tryMessage, false);
+    } else {
+        window.attachEvent('onload', tryMessage); //IE
+    }
+})();
